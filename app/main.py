@@ -1,8 +1,22 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict
 from pydantic import BaseModel
 
 app = FastAPI()
+
+origins = [
+    "http://localhost:5173",
+    "https://samimagine.github.io/somemo/",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # Allow these origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
 
 # In-memory database
 db = {
@@ -20,11 +34,11 @@ db = {
         {"front": "Machen", "back": "Do/Make"},
         {"front": "Gehen", "back": "Go"},
         {"front": "Wissen", "back": "Know"},
-        {"front": "Lesen", "back": "Read"}
-    ]
+        {"front": "Lesen", "back": "Read"},
+    ],
 }
 
-# Models
+#
 class Card(BaseModel):
     front: str
     back: str
