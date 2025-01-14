@@ -1,78 +1,40 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Dict
-from pydantic import BaseModel
+from fastapi import FastAPI, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from .database import Base, engine, get_db
+from .models import User
+from .schemas import UserCreate, UserResponse, Token
+from .auth import hash_password, verify_password, create_access_token, decode_token
+from sqlalchemy.future import select
+from sqlalchemy.exc import IntegrityError
 
 app = FastAPI()
 
-origins = [
-    "http://localhost:5173",
-    "https://samimagine.github.io/somemo/",
-]
+@app.on_event("startup")
+async def startup():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,  # Allow these origins
-    allow_credentials=True,
-    allow_methods=["*"],  # Allow all HTTP methods
-    allow_headers=["*"],  # Allow all headers
-)
-
-# In-memory database
-db = {
-    "category": "German",
-    "title": "Verbs",
-    "cards": [
-        {"front": "Haben", "back": "Have"},
-        {"front": "Sein", "back": "Be"},
-        {"front": "Werden", "back": "Become"},
-        {"front": "Können", "back": "Can"},
-        {"front": "Müssen", "back": "Must"},
-        {"front": "Sollen", "back": "Should"},
-        {"front": "Wollen", "back": "Want"},
-        {"front": "Dürfen", "back": "May"},
-        {"front": "Machen", "back": "Do/Make"},
-        {"front": "Gehen", "back": "Go"},
-        {"front": "Wissen", "back": "Know"},
-        {"front": "Lesen", "back": "Read"},
-    ],
-}
-
-#
-class Card(BaseModel):
-    front: str
-    back: str
-
-class Deck(BaseModel):
-    category: str
-    title: str
-    cards: List[Card]
-
-# Get all cards
-@app.get("/cards", response_model=Deck)
-def get_cards():
-    return db
-
-# Add a card
-@app.post("/cards", response_model=Card)
-def add_card(card: Card):
-    db["cards"].append(card.dict())
-    return card
-
-# Update a card
-@app.put("/cards/{card_index}", response_model=Card)
-def update_card(card_index: int, card: Card):
+@app.post("/register", response_model=UserResponse)
+async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
+    hashed_password = hash_password(user.password)
+    new_user = User(username=user.username, hashed_password=hashed_password, is_admin=user.is_admin)
+    db.add(new_user)
     try:
-        db["cards"][card_index] = card.dict()
-        return card
-    except IndexError:
-        raise HTTPException(status_code=404, detail="Card not found")
+        await db.commit()
+        await db.refresh(new_user)
+        return new_user
+    except IntegrityError:
+        raise HTTPException(status_code=400, detail="Username already exists")
 
-# Delete a card
-@app.delete("/cards/{card_index}")
-def delete_card(card_index: int):
-    try:
-        removed_card = db["cards"].pop(card_index)
-        return {"message": "Card removed", "card": removed_card}
-    except IndexError:
-        raise HTTPException(status_code=404, detail="Card not found")
+@app.post("/login", response_model=Token)
+async def login(username: str, password: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.username == username))
+    user = result.scalar_one_or_none()
+    if not user or not verify_password(password, user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    access_token = create_access_token(data={"sub": user.username, "is_admin": user.is_admin})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/protected-route")
+async def protected_route(token: str = Depends(decode_token)):
+    return {"message": "This is a protected route", "user": token}

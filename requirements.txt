@@ -12,3 +12,9 @@ starlette==0.41.3
 typing_extensions==4.12.2
 uvicorn==0.34.0
 python-dotenv==0.19.1
+sqlalchemy==1.4.31
+aiosqlite==0.17.0
+greenlet==1.1.2
+passlib==1.8.0
+pyjwt==2.3.0
+databases==0.5.6
