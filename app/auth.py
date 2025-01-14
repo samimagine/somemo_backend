@@ -4,7 +4,6 @@ from fastapi import HTTPException, status
 from passlib.context import CryptContext
 import jwt
 
-# Replace with a strong, secret key for production
 SECRET_KEY = "mysecretkey"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
