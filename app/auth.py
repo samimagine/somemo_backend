@@ -32,6 +32,11 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
     else:
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
+
+    # Ensure 'sub' is a string
+    if "sub" in to_encode and not isinstance(to_encode["sub"], str):
+        to_encode["sub"] = str(to_encode["sub"])
+
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -53,26 +58,24 @@ def decode_token(token: str):
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
     try:
-        print("Received Token:", token)  # Log received token
-
         payload = decode_token(token)
-        print("Decoded Payload:", payload)  # Log decoded payload
+        print(f"Decoded Token Payload: {payload}")  # Debug log
 
-        user_id: int = payload.get("sub")
+        # 'sub' must exist and be convertible to int
+        user_id = int(payload.get("sub")) if payload.get("sub") else None
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token: Missing 'sub' field")
 
-        # Check if user exists
+        # Fetch the user
         result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
+
         if user is None:
             raise HTTPException(status_code=401, detail="User not found")
 
-        print(f"Authenticated User: {user.username}")  # Log authenticated user
+        print(f"Authenticated User: {user.username}")  # Debug log
         return {"sub": user.id, "username": user.username, "is_admin": user.is_admin}
     except jwt.ExpiredSignatureError:
-        print("Token has expired")
         raise HTTPException(status_code=401, detail="Token has expired")
     except Exception as e:
-        print("Token Error:", str(e))  # Log token error
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
