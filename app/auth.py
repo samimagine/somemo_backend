@@ -3,7 +3,7 @@ from typing import Union
 from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
-import jwt
+from jose import jwt, JWTError
 from app.database import get_db
 from app.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,7 +41,7 @@ def decode_token(token: str):
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
-    except jwt.InvalidTokenError:
+    except jwt.JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 

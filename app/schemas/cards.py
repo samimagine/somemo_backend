@@ -1,10 +1,9 @@
 from pydantic import BaseModel
-from typing import List, Optional
-from pydantic import BaseModel
+from typing import Optional, List
 
 class Card(BaseModel):
-    id: Optional[int]  # For database ID
-    user_id: Optional[int]  # ID of the user who owns the card
+    id: Optional[int]
+    user_id: Optional[int]
     front: str
     back: str
     isChecked: Optional[bool] = False
