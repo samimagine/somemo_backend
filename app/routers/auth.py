@@ -36,7 +36,6 @@ async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
             detail="Invalid credentials",
         )
 
-    # Create token with 'sub' field as user.id
     access_token = create_access_token(data={"sub": user.id})
     print(f"Token created for User ID {user.id}: {access_token}")  # Log created token
     return {"access_token": access_token, "token_type": "bearer"}

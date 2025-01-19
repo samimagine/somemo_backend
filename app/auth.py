@@ -37,13 +37,19 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
 
 def decode_token(token: str):
     try:
+        print(f"Decoding Token: {token}")  # Debug: Log token
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        print(f"Decoded Payload: {payload}")  # Debug: Log decoded payload
+
+        # Validate 'sub' exists in payload
+        if "sub" not in payload:
+            raise HTTPException(status_code=401, detail="Token missing 'sub' field")
+
         return payload
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
-    except jwt.JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.JWTError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
     try:
