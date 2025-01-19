@@ -60,13 +60,15 @@ async def add_card(
     current_user=Depends(get_current_user),
 ):
     try:
-        print(f"Received card data: {card.dict()}")  # Log incoming payload
+        # Log the incoming payload
+        print(f"Received payload: {card.dict()}")
 
+        # Ensure the user ID is set based on the current user
         new_card = Card(
-            user_id=current_user["sub"],  # Ensure user_id is set from the current user
+            user_id=current_user["sub"],
             front=card.front,
             back=card.back,
-            isChecked=card.isChecked or False,  # Default isChecked to False if not provided
+            isChecked=card.isChecked or False,
         )
         db.add(new_card)
         await db.commit()
