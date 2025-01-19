@@ -60,12 +60,12 @@ async def add_card(
     current_user=Depends(get_current_user),
 ):
     try:
-        # Ensure the user_id is set from the current user
+        print(f"Incoming card data: {card.dict()}")  # Log incoming data
         new_card = Card(
-            user_id=current_user["sub"],
+            user_id=current_user["sub"],  # Set the user ID from the current user
             front=card.front,
             back=card.back,
-            isChecked=card.isChecked or False,  # Default to False if not provided
+            isChecked=card.isChecked or False,
         )
         db.add(new_card)
         await db.commit()
@@ -73,7 +73,7 @@ async def add_card(
         return new_card
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to add card: {str(e)}")
-
+    
 @router.post("/save-checked")
 async def save_checked_cards(
     cards: List[CardSchema],
