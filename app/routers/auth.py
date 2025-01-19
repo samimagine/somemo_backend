@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
-from ..database import get_db
-from ..models import User
-from ..schemas.auth import UserCreate, UserResponse, LoginRequest, Token
-from ..auth import hash_password, verify_password, create_access_token
+from app.database import get_db
+from app.models import User
+from app.schemas.auth import UserCreate, UserResponse, LoginRequest, Token
+from app.auth import hash_password, verify_password, create_access_token
 
 router = APIRouter()
 
@@ -34,5 +34,5 @@ async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
-    access_token = create_access_token(data={"sub": user.username, "is_admin": user.is_admin})
+    access_token = create_access_token(data={"sub": user.id, "username": user.username, "is_admin": user.is_admin})
     return {"access_token": access_token, "token_type": "bearer"}
