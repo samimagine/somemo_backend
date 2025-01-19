@@ -1,13 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from typing import List
+from slowapi.util import get_remote_address
+from slowapi import Limiter
 from app.database import get_db
 from app.models import Card
 from app.schemas.cards import Card as CardSchema, CardCreate
 from app.auth import get_current_user
 
+limiter = Limiter(key_func=get_remote_address)
 router = APIRouter()
 
 MOCK_CARDS = [
@@ -25,9 +28,10 @@ MOCK_CARDS = [
     {"front": "Lesen", "back": "Read", "isChecked": False},
 ]
 
-
 @router.get("/", response_model=List[CardSchema])
+@limiter.limit("1/minute")
 async def get_user_cards(
+        request: Request,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -35,7 +39,6 @@ async def get_user_cards(
         result = await db.execute(select(Card).where(Card.user_id == current_user["sub"]))
         cards = result.scalars().all()
 
-        # Populate mock cards if none exist for the user
         if not cards:
             for mock_card in MOCK_CARDS:
                 new_card = Card(
@@ -54,25 +57,27 @@ async def get_user_cards(
         raise HTTPException(status_code=500, detail=f"Failed to fetch cards: {str(e)}")
 
 @router.post("/", response_model=CardSchema)
+@limiter.limit("1/minute")
 async def add_card(
-    card: CardCreate,  # Use CardCreate for incoming requests
+    request: Request,
+    card: CardCreate,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     try:
         new_card = Card(
-            user_id=current_user["sub"],  # Assign user_id from the logged-in user
+            user_id=current_user["sub"],
             front=card.front,
             back=card.back,
-            isChecked=card.isChecked or False,  # Default to False if not provided
+            isChecked=card.isChecked or False,
         )
         db.add(new_card)
         await db.commit()
         await db.refresh(new_card)
-        return new_card  # Return the full Card schema
+        return new_card
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to add card: {str(e)}")    
-     
+
 @router.post("/save-checked")
 async def save_checked_cards(
     cards: List[CardSchema],

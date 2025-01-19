@@ -1,3 +1,5 @@
+import os
+from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from typing import Union
 from fastapi import HTTPException, status, Depends
@@ -9,7 +11,9 @@ from app.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-SECRET_KEY = "mysecretkey"
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -79,3 +83,4 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         raise HTTPException(status_code=401, detail="Token has expired")
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
+    
