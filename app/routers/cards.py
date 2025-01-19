@@ -32,13 +32,10 @@ async def get_user_cards(
     current_user=Depends(get_current_user),
 ):
     try:
-        # Query cards for the current user
-        result = await db.execute(
-            select(Card).where(Card.user_id == current_user["sub"]).options(selectinload(Card.user))
-        )
+        result = await db.execute(select(Card).where(Card.user_id == current_user["sub"]))
         cards = result.scalars().all()
 
-        # If no cards exist, add MOCK_CARDS for this user
+        # Populate mock cards if none exist for the user
         if not cards:
             for mock_card in MOCK_CARDS:
                 new_card = Card(
@@ -49,17 +46,12 @@ async def get_user_cards(
                 )
                 db.add(new_card)
             await db.commit()
-
-            # Re-fetch cards after adding
-            result = await db.execute(
-                select(Card).where(Card.user_id == current_user["sub"])
-            )
+            result = await db.execute(select(Card).where(Card.user_id == current_user["sub"]))
             cards = result.scalars().all()
 
         return cards
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch cards: {str(e)}")
-
 
 @router.post("/", response_model=CardSchema)
 async def add_card(
@@ -68,8 +60,13 @@ async def add_card(
     current_user=Depends(get_current_user),
 ):
     try:
-        print(f"Incoming card data: {card.dict()}")  # Log the incoming payload
-        new_card = Card(**card.dict(), user_id=current_user["sub"])
+        # Ensure the user_id is set from the current user
+        new_card = Card(
+            user_id=current_user["sub"],
+            front=card.front,
+            back=card.back,
+            isChecked=card.isChecked or False,  # Default to False if not provided
+        )
         db.add(new_card)
         await db.commit()
         await db.refresh(new_card)
@@ -85,12 +82,8 @@ async def save_checked_cards(
 ):
     try:
         for card in cards:
-            # Update each card's isChecked status
             result = await db.execute(
-                select(Card).where(
-                    Card.id == card.id,
-                    Card.user_id == current_user["sub"]
-                )
+                select(Card).where(Card.id == card.id, Card.user_id == current_user["sub"])
             )
             db_card = result.scalar_one_or_none()
 
