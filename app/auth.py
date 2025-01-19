@@ -47,17 +47,26 @@ def decode_token(token: str):
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
     try:
+        print("Received Token:", token)  # Log received token
+
         payload = decode_token(token)
+        print("Decoded Payload:", payload)  # Log decoded payload
+
         user_id: int = payload.get("sub")
         if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
+            raise HTTPException(status_code=401, detail="Invalid token: Missing 'sub' field")
 
+        # Check if user exists
         result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
         if user is None:
             raise HTTPException(status_code=401, detail="User not found")
+
+        print(f"Authenticated User: {user.username}")  # Log authenticated user
         return {"sub": user.id, "username": user.username, "is_admin": user.is_admin}
     except jwt.ExpiredSignatureError:
+        print("Token has expired")
         raise HTTPException(status_code=401, detail="Token has expired")
     except Exception as e:
+        print("Token Error:", str(e))  # Log token error
         raise HTTPException(status_code=401, detail="Invalid token")

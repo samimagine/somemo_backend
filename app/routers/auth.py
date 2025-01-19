@@ -29,10 +29,14 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
 async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.username == data.username))
     user = result.scalar_one_or_none()
+
     if not user or not verify_password(data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
-    access_token = create_access_token(data={"sub": user.id, "username": user.username, "is_admin": user.is_admin})
+
+    # Create token with 'sub' field as user.id
+    access_token = create_access_token(data={"sub": user.id})
+    print(f"Token created for User ID {user.id}: {access_token}")  # Log created token
     return {"access_token": access_token, "token_type": "bearer"}
