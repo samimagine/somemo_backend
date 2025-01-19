@@ -16,10 +16,10 @@ class User(Base):
 class Card(Base):
     __tablename__ = "cards"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    front = Column(String, nullable=False)
-    back = Column(String, nullable=False)
-    isChecked = Column(Boolean, default=False)
+    id = Column(Integer, primary_key=True, index=True)  # Auto-generated
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Backend assigns this
+    front = Column(String, nullable=False)  # Required
+    back = Column(String, nullable=False)  # Required
+    isChecked = Column(Boolean, default=False)  # Defaults to False
 
     user = relationship("User", back_populates="cards")

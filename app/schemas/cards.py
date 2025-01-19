@@ -1,17 +1,17 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional
 
-class Card(BaseModel):
-    id: Optional[int]  # Backend generates this
-    user_id: Optional[int]  # Automatically assigned based on the logged-in user
-    front: str  # Required
-    back: str  # Required
-    isChecked: Optional[bool] = False  # Defaults to False
+class CardBase(BaseModel):
+    front: str
+    back: str
+    isChecked: Optional[bool] = False
+
+class CardCreate(CardBase):
+    pass  # This schema is used for incoming requests and does not include id or user_id
+
+class Card(CardBase):
+    id: int
+    user_id: int
 
     class Config:
-        orm_mode = True
-
-class Deck(BaseModel):
-    category: str
-    title: str
-    cards: List[Card]
+        from_attributes = True

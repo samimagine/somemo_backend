@@ -5,7 +5,7 @@ from sqlalchemy.orm import selectinload
 from typing import List
 from app.database import get_db
 from app.models import Card
-from app.schemas.cards import Card as CardSchema
+from app.schemas.cards import Card as CardSchema, CardCreate
 from app.auth import get_current_user
 
 router = APIRouter()
@@ -55,27 +55,23 @@ async def get_user_cards(
 
 @router.post("/", response_model=CardSchema)
 async def add_card(
-    card: CardSchema,
+    card: CardCreate,  # Use CardCreate for incoming requests
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     try:
-        # Log the incoming payload
-        print(f"Received payload: {card.dict()}")
-
-        # Ensure the user ID is set based on the current user
         new_card = Card(
-            user_id=current_user["sub"],
+            user_id=current_user["sub"],  # Assign user_id from the logged-in user
             front=card.front,
             back=card.back,
-            isChecked=card.isChecked or False,
+            isChecked=card.isChecked or False,  # Default to False if not provided
         )
         db.add(new_card)
         await db.commit()
         await db.refresh(new_card)
-        return new_card
+        return new_card  # Return the full Card schema
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to add card: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to add card: {str(e)}")    
      
 @router.post("/save-checked")
 async def save_checked_cards(
